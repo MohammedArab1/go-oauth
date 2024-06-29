@@ -2,29 +2,36 @@ package main
 
 import (
 	"fmt"
-	// "net/http"
+	"net/http"
 
-	// "html/template"
-	"os"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/jwtauth"
+	"github.com/joho/godotenv"
 
-	// "github.com/go-chi/chi/v5"
-	// "github.com/go-chi/chi/v5/middleware"
+	"go-oauth/handlers"
 )
 
 func main() {
-
-	fs := os.DirFS("static/")
-	fmt.Println(fs.Open("index.html"))
-	// someHtml := `
-	// <h1>You've made it to the main page!</h1>
-	// `
-
-	// r := chi.NewRouter()
-	// r.Use(middleware.Logger)
-	// r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-	// 	// http.FileServer(http.Dir("./static"))
-	// 	tmpl := template.Must(template.New("myTemplate").Parse(someHtml))
-	// 	tmpl.Execute(w, "some data")
-	// })
-	// http.ListenAndServe(":3000", r)
+	// var tokenAuth *jwtauth.JWTAuth
+	godotenv.Load()
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Get("/", handlers.MainPage)
+	r.Get("/login", handlers.LoginPage)
+	r.Get("/callback", handlers.OauthRedirect)
+	r.Group(func(r chi.Router) {
+		// tokenAuth = jwtauth.New("RS256", []byte("secret"), nil)
+		// tokenAuth.Encode(map[string]interface{}{"user_id": 123})
+		// r.Use(jwtauth.Verifier(tokenAuth))
+		// r.Use(jwtauth.Authenticator)
+		r.Use(handlers.JWTAuthenticator)
+		r.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
+			_, claims, _ := jwtauth.FromContext(r.Context())
+			fmt.Println("CLAIMS IS: ", claims)
+			w.Write([]byte(fmt.Sprintf("protected area. hi %v", claims["name"])))
+		})
+	})
+	// r.Get("/admin", handlers.AdminPage)
+	http.ListenAndServe(":3000", r)
 }
